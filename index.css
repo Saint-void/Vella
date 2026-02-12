@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* Add this line to force Tailwind to scan your root folder files */
+@source "./*.{tsx,jsx,ts,js}";

@@ -1,0 +1,7 @@
+{
+  "name": "Vella AI",
+  "description": "Vella is an intelligent, calm, and helpful AI assistant built by Void Tech. Optimized for education, tech support, and creative problem-solving.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
