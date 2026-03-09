@@ -59,7 +59,8 @@ export const sendMessageToVellaStream = async (
   onTokenReceived: (token: string) => void,
   onComplete?: () => void,
   sessionId?: string,
-  userId?: string
+  userId?: string,
+  abortSignal?: AbortSignal // <--- NEW: Accept the kill signal
 ): Promise<void> => {
   
   try {
@@ -67,7 +68,7 @@ export const sendMessageToVellaStream = async (
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true', // <--- ⚠️ AND HERE
+        'ngrok-skip-browser-warning': 'true',
         'x-session-id': sessionId || '',
         'x-user-id': userId || 'anonymous'
       },
@@ -75,6 +76,7 @@ export const sendMessageToVellaStream = async (
         prompt: text, 
         max_new_tokens: 200 
       }),
+      signal: abortSignal // <--- NEW: Attach signal to the request
     });
 
     if (!response.body) {
@@ -93,9 +95,14 @@ export const sendMessageToVellaStream = async (
 
     if (onComplete) onComplete();
 
-  } catch (error) {
-    console.error("Stream Error:", error);
-    onTokenReceived("\n[Error: Could not connect to Vella Backend]");
+  } catch (error: any) {
+    // NEW: Handle the intentional abort gracefully without throwing a big red error
+    if (error.name === 'AbortError') {
+      console.log("Stream stopped by user");
+    } else {
+      console.error("Stream Error:", error);
+      onTokenReceived("\n[Error: Could not connect to Vella Backend]");
+    }
     if (onComplete) onComplete();
   }
 };

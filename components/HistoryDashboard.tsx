@@ -79,7 +79,7 @@ const HistoryDashboard: React.FC<HistoryDashboardProps> = ({
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-xl flex items-center justify-center p-0 md:p-8 animate-appear">
-      <div className="w-full md:max-w-6xl h-full  bg-black/90 md:rounded-[2.5rem] border-t md:border border-white/10 shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full md:max-w-6xl h-full  bg-black/90 md:rounded-[1.5rem] border-t md:border border-white/10 shadow-2xl flex flex-col overflow-hidden">
         
         {/* Header Bar */}
         <div className="flex items-center justify-between px-4 md:px-4 py-2 md:py-6 border-b border-white/5 bg-black/20">

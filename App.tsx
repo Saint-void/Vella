@@ -26,6 +26,7 @@ import {
   FileText,
   ChevronDown,
   Globe,
+  X,
   HelpCircle,
   Zap
 } from 'lucide-react';
@@ -46,6 +47,8 @@ const App: React.FC = () => {
   const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false); // NEW: loading animation
+  const [sttAbortController, setSttAbortController] = useState<AbortController | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -154,6 +157,15 @@ const App: React.FC = () => {
     }
   };
 
+  // 👇 ADD THIS FUNCTION
+  const handleStopGeneration = () => {
+    if (abortController) {
+      abortController.abort(); // Sends the kill signal
+      setAbortController(null);
+      setIsLoading(false);
+    }
+  };
+
   const handleActionClick = () => {
     if (input.trim()) {
       handleSendMessage();
@@ -161,80 +173,63 @@ const App: React.FC = () => {
   };
 
   // --- UPDATED SEND LOGIC (DB INTEGRATION) ---
-  const handleSendMessage = async (textOverride?: string) => {
-    const textToSend = textOverride || input;
-    if (!textToSend.trim() || isLoading) return;
+ const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return;
 
-    // Determine Session ID (Use existing or create new one)
     let activeSessionId = currentChatId;
     let isNewChat = false;
 
     if (!activeSessionId) {
-      activeSessionId = Date.now().toString(); // Generate client-side ID for new chat
+      activeSessionId = Date.now().toString();
       setCurrentChatId(activeSessionId);
       isNewChat = true;
     }
 
-    // 1. Add User Message UI
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: textToSend,
-      timestamp: Date.now()
-    };
-
-    setMessages(prev => [...prev, userMsg]);
+    const textToSend = input;
     setInput('');
-    setIsLoading(true); 
+    setIsLoading(true);
 
-    // 2. Add Empty Bot Placeholder UI
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: textToSend, timestamp: Date.now() };
+    setMessages(prev => [...prev, userMsg]);
+
     const botMsgId = (Date.now() + 1).toString();
-    const botMsgPlaceholder: Message = {
-      id: botMsgId,
-      role: 'model',
-      content: '', 
-      timestamp: Date.now()
-    };
+    const botMsg: Message = { id: botMsgId, role: 'model', content: '', timestamp: Date.now() };
+    setMessages(prev => [...prev, botMsg]);
 
-    setMessages(prev => [...prev, botMsgPlaceholder]);
+    let hasStarted = false;
 
-    let fullResponseText = ""; 
-    let hasStartedStreaming = false;
+    // 👇 CREATE THE CONTROLLER
+    const newController = new AbortController();
+    setAbortController(newController);
 
     try {
       await sendMessageToVellaStream(
         textToSend,
         (token) => {
-          // --- ON TOKEN RECEIVED ---
-          if (!hasStartedStreaming) {
-             setIsLoading(false);
-             hasStartedStreaming = true;
-          }
-
-          fullResponseText += token;
-          setMessages(prev => prev.map(msg => {
-            if (msg.id === botMsgId) {
-              return { ...msg, content: msg.content + token };
-            }
-            return msg;
-          }));
+          if (!hasStarted) { setIsLoading(false); hasStarted = true; }
+          setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, content: m.content + token } : m));
         },
         async () => {
-          // --- ON COMPLETE ---
           setIsLoading(false);
+          setAbortController(null); // 👇 CLEAR THE CONTROLLER WHEN DONE
           
-          // If this was a new chat, refresh the sidebar so the new session appears
           if (isNewChat && currentUser) {
-             const updatedSessions = await fetchSessions(currentUser.id);
-             setHistoryList(updatedSessions);
+            console.log("🔄 New chat created. Refreshing sidebar...");
+            const updated = await fetchSessions(currentUser.id);
+            const formatted: SidebarChat[] = updated.map((s: any) => ({
+                id: s.id, title: s.title || "New Chat", messages: [], timestamp: new Date(s.created_at).getTime(), userId: s.user_id
+            }));
+            setHistoryList(formatted);
           }
         },
-        activeSessionId, // Pass Session ID to backend
-        currentUser?.id // Pass User ID to backend
+        activeSessionId, 
+        currentUser?.id,
+        newController.signal // 👇 PASS THE SIGNAL TO THE API CALL
       );
-    } catch (error) {
-        console.error("Chat Error", error);
-        setIsLoading(false);
+    } catch (e) {
+      console.error(e);
+      setIsLoading(false);
+      setAbortController(null);
     }
   };
 
@@ -524,17 +519,16 @@ const App: React.FC = () => {
                   {isDictating ? <StopCircle size={20} /> : <Mic size={20} />}
                 </button>
 
-                <button 
-                  onClick={handleActionClick}
-                  disabled={isTranscribing}
-                  className={`p-2 rounded-full transition-all shadow-md ${
-                    input.trim()
-                      ? 'bg-white text-black hover:p-2'
-                      : 'bg-white text-black hover:p-2'
-                  } ${isTranscribing ? 'opacity-60 pointer-events-none' : ''}`}
-                >
-                  <SendHorizontal size={22} />
+                {/* 👇 IF GENERATING, SHOW STOP BUTTON, OTHERWISE SHOW SEND BUTTON */}
+              {abortController ? (
+                <button onClick={handleStopGeneration} className="p-2 bg-zinc-800 text-white rounded-full hover:bg-zinc-700 transition-all shadow-md border border-white/10">
+                  <StopCircle size={20} />
                 </button>
+              ) : (
+                <button onClick={handleSendMessage} className="p-2 bg-white text-black rounded-full hover:scale-105 transition-all shadow-md">
+                  <SendHorizontal size={20} />
+                </button>
+              )}
               </div>
             </div>
               </div>
@@ -582,17 +576,16 @@ const App: React.FC = () => {
                   {isDictating ? <StopCircle size={20} /> : <Mic size={20} />}
                 </button>
 
-                <button 
-                  onClick={handleActionClick}
-                  disabled={isTranscribing}
-                  className={`p-2 rounded-full transition-all shadow-md ${
-                    input.trim()
-                      ? 'bg-white text-black hover:p-2'
-                      : 'bg-white text-black hover:p-2'
-                  } ${isTranscribing ? 'opacity-60 pointer-events-none' : ''}`}
-                >
-                  <SendHorizontal size={22} />
+                {/* 👇 IF GENERATING, SHOW STOP BUTTON, OTHERWISE SHOW SEND BUTTON */}
+              {abortController ? (
+                <button onClick={handleStopGeneration} className="p-2 bg-zinc-800 text-white rounded-full hover:bg-zinc-700 transition-all shadow-md border border-white/10">
+                  <StopCircle size={20} />
                 </button>
+              ) : (
+                <button onClick={handleSendMessage} className="p-2 bg-white text-black rounded-full hover:scale-105 transition-all shadow-md">
+                  <SendHorizontal size={20} />
+                </button>
+              )}
               </div>
             </div>
 

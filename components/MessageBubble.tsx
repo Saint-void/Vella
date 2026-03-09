@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Copy, Check, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Copy, Check, Volume2, StopCircle, Loader2 } from 'lucide-react'; 
 import { Message } from '../types';
 import CodeBlock from './CodeBlock';
 import { ttsService } from '../services/ttsService';
@@ -26,19 +26,32 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   };
 
   const handleReadAloud = async () => {
-    if (isSpeaking) {
+    // If it is doing anything (loading or speaking), stop it immediately
+    if (isSpeaking || isLoadingSpeech) {
       ttsService.stop();
       setIsSpeaking(false);
+      setIsLoadingSpeech(false);
       return;
     }
 
+    // Phase 1: Show Loading Spinner
     setIsLoadingSpeech(true);
+    setIsSpeaking(false); 
+    
     try {
-      setIsSpeaking(true);
-      await ttsService.speak(message.content);
+      await ttsService.speak(
+        message.content, 
+        true,
+        // 👇 Phase 2: Callback fires when audio actually starts
+        () => {
+          setIsLoadingSpeech(false);
+          setIsSpeaking(true);
+        }
+      );
     } catch (err) {
       console.error('Speech error:', err);
     } finally {
+      // Phase 3: Everything is done, reset states
       setIsLoadingSpeech(false);
       setIsSpeaking(false);
     }
@@ -87,9 +100,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                   </ReactMarkdown>
                 </div>
                 
-                {/* --- UPDATED: Action Bar (Only shows if content exists) --- */}
+                {/* --- Action Bar --- */}
                 {message.content && message.content.trim().length > 0 && (
-                  <div className="mt-4 flex items-center gap-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="mt-4 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <button
                       onClick={handleCopy}
                       className="p-2 text-[#B4B4B4] hover:text-white hover:bg-[#2F2F2F] rounded-xl transition-all"
@@ -97,7 +110,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                       title="Copy to clipboard"
                     >
                       {isCopied ? (
-                        <Check size={18} />
+                        <Check size={18} className="text-green-400" />
                       ) : (
                         <Copy size={18} />
                       )}
@@ -105,36 +118,41 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
                     <button
                       onClick={handleReadAloud}
-                      disabled={isLoadingSpeech}
-                      className={`p-2 rounded-xl transition-all relative
-                        ${isSpeaking 
-                          ? 'text-white bg-blue-600/20' 
-                          : 'text-[#B4B4B4] hover:text-white hover:bg-[#2F2F2F]'
+                      className={`flex items-center gap-2 p-2 rounded-xl transition-all relative overflow-hidden
+                        ${(isSpeaking || isLoadingSpeech)
+                          ? 'text-white hover:bg-[#2F2F2F] border border-transparent' 
+                          : 'text-[#B4B4B4] hover:text-white hover:bg-[#2F2F2F] border border-transparent'
                         }
-                        ${isLoadingSpeech ? 'opacity-50 cursor-not-allowed' : ''}
                       `}
                       aria-label="Read aloud"
-                      title={isSpeaking ? "Stop reading" : "Read aloud"}
+                      title={(isSpeaking || isLoadingSpeech) ? "Stop reading" : "Read aloud"}
                     >
+                      {/* STATE 1: LOADING */}
                       {isLoadingSpeech ? (
-                        <Loader2 size={18} className="animate-spin text-blue-400" />
-                      ) : isSpeaking ? (
-                        <VolumeX size={18} className="text-blue-400" />
-                      ) : (
+                        <>
+                          <StopCircle size={18} className="text-white hover:text-red-400 transition-colors" />
+                          <Loader2 size={16} className="animate-spin text-white ml-1" />
+                        </>
+                      ) : 
+                      /* STATE 2: SPEAKING */
+                      isSpeaking ? (
+                        <>
+                          <StopCircle size={18} className="text-white hover:text-red-400 transition-colors" />
+                          <div className="flex items-center gap-[2px] h-3 px-1">
+                            <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '100%', animationDuration: '0.6s' }}></div>
+                            <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '60%', animationDuration: '0.8s' }}></div>
+                            <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '80%', animationDuration: '0.7s' }}></div>
+                            <div className="w-1 bg-white rounded-full animate-pulse" style={{ height: '50%', animationDuration: '0.5s' }}></div>
+                          </div>
+                        </>
+                      ) : 
+                      /* STATE 3: IDLE */
+                      (
                         <Volume2 size={18} />
-                      )}
-                      
-                      {isSpeaking && (
-                        <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                        </span>
                       )}
                     </button>
                   </div>
                 )}
-                {/* -------------------------------------------------------- */}
-
               </>
             )}
           </div>

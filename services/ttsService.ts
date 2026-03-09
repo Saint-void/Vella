@@ -4,39 +4,52 @@
 const BACKEND_URL = "https://exhilaratingly-heaveless-lael.ngrok-free.dev/tts"; 
 
 class TTSService {
-  private textQueue: string[] = [];       // Sentences waiting to be converted
-  private audioQueue: string[] = [];      // Audio URLs ready to be played
-  private isFetching: boolean = false;    // Is the downloader running?
-  private isPlaying: boolean = false;     // Is the player running?
+  private textQueue: string[] = [];       
+  private audioQueue: string[] = [];      
+  private isFetching: boolean = false;    
+  private isPlaying: boolean = false;     
   private currentAudio: HTMLAudioElement | null = null;
   private abortController: AbortController | null = null;
+  
+  private onFinishCallback: (() => void) | null = null;
+  // 👇 NEW: Keeps track of when the first audio actually starts
+  private onStartCallback: (() => void) | null = null;
 
   /**
    * Adds text to the queue and starts the pipeline.
+   * NEW: Accepts an onStart callback!
    */
-  speak(text: string, clearQueue = true) {
-    if (clearQueue) {
-      this.stop();
-    }
-
-    // Split paragraph into sentences nicely
-    const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
-
-    sentences.forEach(sentence => {
-      if (sentence.trim()) {
-        this.textQueue.push(sentence.trim());
+  speak(text: string, clearQueue = true, onStart?: () => void): Promise<void> {
+    return new Promise((resolve) => {
+      if (clearQueue) {
+        this.stop();
       }
-    });
 
-    // Start both workers: The Fetcher and The Player
-    this.processTextQueue();
-    this.processAudioQueue();
+      this.onFinishCallback = resolve;
+      this.onStartCallback = onStart || null;
+
+      const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+
+      sentences.forEach(sentence => {
+        if (sentence.trim()) {
+          this.textQueue.push(sentence.trim());
+        }
+      });
+
+      this.processTextQueue();
+      this.processAudioQueue();
+    });
   }
 
-  /**
-   * WORKER 1: The Fetcher
-   * Converts text to audio in the background as fast as possible.
-   */
+  private checkIfDone() {
+    if (!this.isFetching && !this.isPlaying && this.textQueue.length === 0 && this.audioQueue.length === 0) {
+      if (this.onFinishCallback) {
+        this.onFinishCallback(); 
+        this.onFinishCallback = null;
+      }
+    }
+  }
+
   private async processTextQueue() {
     if (this.isFetching || this.textQueue.length === 0) return;
 
@@ -51,7 +64,7 @@ class TTSService {
 
         const res = await fetch(BACKEND_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
           body: JSON.stringify({ text: sentence }),
           signal: this.abortController.signal
         });
@@ -61,10 +74,8 @@ class TTSService {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         
-        // Push the ready audio to the Audio Queue
         this.audioQueue.push(url);
         
-        // If the player stopped because it ran out of audio, wake it up!
         if (!this.isPlaying) {
           this.processAudioQueue();
         }
@@ -75,20 +86,23 @@ class TTSService {
     }
 
     this.isFetching = false;
+    this.checkIfDone(); 
   }
 
-  /**
-   * WORKER 2: The Player
-   * Plays audio files one by one from the buffer.
-   */
   private async processAudioQueue() {
-    if (this.isPlaying || this.audioQueue.length === 0) return;
+    if (this.isPlaying) return;
+
+    if (this.audioQueue.length === 0) {
+      this.checkIfDone(); 
+      return;
+    }
 
     this.isPlaying = true;
     const audioUrl = this.audioQueue.shift();
 
     if (!audioUrl) {
       this.isPlaying = false;
+      this.checkIfDone();
       return;
     }
 
@@ -96,15 +110,18 @@ class TTSService {
       await new Promise<void>((resolve) => {
         this.currentAudio = new Audio(audioUrl);
         
-        // When this sentence finishes, resolve to play the next one immediately
-        this.currentAudio.onended = () => {
-          resolve();
-        };
+        this.currentAudio.onended = () => resolve();
 
         this.currentAudio.onerror = () => {
           console.error("Audio playback error, skipping segment.");
           resolve();
         };
+
+        // 👇 NEW: Trigger the UI change right before we hit play!
+        if (this.onStartCallback) {
+          this.onStartCallback();
+          this.onStartCallback = null; // Clear it so it only fires on the first sentence
+        }
 
         this.currentAudio.play().catch(err => {
             console.warn("Autoplay blocked or stopped:", err);
@@ -116,33 +133,33 @@ class TTSService {
     } finally {
       this.isPlaying = false;
       this.currentAudio = null;
-      // Immediately check for the next file
       this.processAudioQueue();
     }
   }
 
-  /**
-   * Stops everything and clears buffers.
-   */
   stop() {
-    // 1. Clear Queues
     this.textQueue = [];
     this.audioQueue = [];
     
-    // 2. Stop Fetching
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
     }
     this.isFetching = false;
 
-    // 3. Stop Playing
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
     this.isPlaying = false;
+
+    if (this.onFinishCallback) {
+      this.onFinishCallback();
+      this.onFinishCallback = null;
+    }
+    // 👇 NEW: Clear the start callback if stopped early
+    this.onStartCallback = null; 
   }
 }
 
