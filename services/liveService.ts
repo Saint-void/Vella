@@ -1,5 +1,7 @@
 // src/services/liveService.ts
-const BACKEND = import.meta.env.VITE_VELLA_BACKEND_URL || "https://exhilaratingly-heaveless-lael.ngrok-free.dev";
+// const BACKEND = import.meta.env.VITE_VELLA_BACKEND_URL || "https://exhilaratingly-heaveless-lael.ngrok-free.dev";
+const BACKEND = "http://localhost:8001"; // Uncomment for local testing
+
 
 // Stream Chat (existing function)
 export function streamChat(

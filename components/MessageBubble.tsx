@@ -26,6 +26,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   };
 
   const handleReadAloud = async () => {
+    // ⚡ BROWSER UNLOCKER: Force warm-up the audio driver directly on the click thread
+    const audioUnlocker = new Audio();
+    audioUnlocker.play().catch(() => {});
+
     // If it is doing anything (loading or speaking), stop it immediately
     if (isSpeaking || isLoadingSpeech) {
       ttsService.stop();
@@ -34,27 +38,39 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       return;
     }
 
-    // Phase 1: Show Loading Spinner
+    // Phase 1: Enter loading state
     setIsLoadingSpeech(true);
     setIsSpeaking(false); 
     
     try {
-      await ttsService.speak(
+      // ⚡ FIX: Removed 'await' here so the execution context doesn't block.
+      // We rely on callbacks and internal promises to update UI lifecycles.
+      ttsService.speak(
         message.content, 
         true,
-        // 👇 Phase 2: Callback fires when audio actually starts
+        // 👇 Phase 2: Callback triggers the moment the first sentence plays
         () => {
           setIsLoadingSpeech(false);
           setIsSpeaking(true);
         }
-      );
+      )
+      .then(() => {
+        // 👇 Phase 3: Triggers only when the entire speech queue finishes naturally
+        setIsLoadingSpeech(false);
+        setIsSpeaking(false);
+      })
+      .catch((err) => {
+        console.error('Speech queue playback crashed:', err);
+        setIsLoadingSpeech(false);
+        setIsSpeaking(false);
+      });
+
     } catch (err) {
-      console.error('Speech error:', err);
-    } finally {
-      // Phase 3: Everything is done, reset states
+      console.error('Speech initialization error:', err);
       setIsLoadingSpeech(false);
       setIsSpeaking(false);
     }
+    // ⚡ FIX: Removed the global 'finally' block that was breaking the asynchronous state.
   };
 
   return (
@@ -76,7 +92,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 <div className="prose prose-invert prose-lg max-w-none prose-p:my-2 prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0">
                   <ReactMarkdown
                     components={{
-                      code({ node, className, children, ...props }) {
+                      code({ className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
                         const isInline = !match && !String(children).includes('\n');
                         

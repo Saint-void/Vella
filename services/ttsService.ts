@@ -1,7 +1,9 @@
 // src/services/ttsService.ts
 
 // ⚠️ Ensure this matches your ngrok or localhost URL
-const BACKEND_URL = "https://exhilaratingly-heaveless-lael.ngrok-free.dev/tts"; 
+// const BACKEND_URL = "https://exhilaratingly-heaveless-lael.ngrok-free.dev/tts"; 
+const BACKEND_URL = "http://localhost:8001/tts"; // Uncomment for local testing
+
 
 class TTSService {
   private textQueue: string[] = [];       
