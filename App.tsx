@@ -135,6 +135,13 @@ const App: React.FC = () => {
             body: formData,
           });
 
+        // try {
+        //   // ⚠️ Ensure this matches your ngrok URL or uses a config variable
+        //   const res = await fetch(" http://localhost:8001/stt", {
+        //     method: "POST",
+        //     body: formData,
+        //   });
+
           const data = await res.json();
 
           if (data.text) {

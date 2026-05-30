@@ -92,16 +92,37 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 <div className="prose prose-invert prose-lg max-w-none prose-p:my-2 prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0">
                   <ReactMarkdown
                     components={{
+                      // 👑 FIX 1: Explicitly style ordered lists so numbers stay inside bounds with a proper left gutter
+                      ol({ children }) {
+                        return (
+                          <ol className="list-decimal list-inside pl-2 my-2 space-y-1 text-[#ECECEC]">
+                            {children}
+                          </ol>
+                        );
+                      },
+                      // 👑 FIX 2: Explicitly style unordered lists (bullets) just in case
+                      ul({ children }) {
+                        return (
+                          <ul className="list-disc list-inside pl-2 my-2 space-y-1 text-[#ECECEC]">
+                            {children}
+                          </ul>
+                        );
+                      },
+                      // 👑 FIX 3: Keep list items block-aligned so random breaks don't ruin text layouts
+                      li({ children }) {
+                        return <li className="inline-block w-full my-0.5">{children}</li>;
+                      },
+                      // Your existing custom code block handler remains completely untouched
                       code({ className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
                         const isInline = !match && !String(children).includes('\n');
                         
                         if (isInline) {
-                           return (
-                             <code className="bg-[#1e1e1e] text-[#FF79C6] rounded px-1.5 py-0.5 font-mono text-[0.9em]" {...props}>
-                               {children}
-                             </code>
-                           );
+                          return (
+                            <code className="bg-[#1e1e1e] text-[#FF79C6] rounded px-1.5 py-0.5 font-mono text-[0.9em]" {...props}>
+                              {children}
+                            </code>
+                          );
                         }
 
                         return (
