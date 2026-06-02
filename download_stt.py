@@ -1,3 +1,8 @@
 from faster_whisper import download_model
+from pathlib import Path
 
-download_model("small", cache_dir="V:/Document/Vella-Modes/models")
+MODELS_DIR = Path(__file__).resolve().parents[1] / "models"
+MODEL_DIR = MODELS_DIR / "models--Systran--faster-whisper-medium.en"
+
+path = download_model("medium.en", output_dir=str(MODEL_DIR))
+print(f"Downloaded Faster-Whisper medium.en to: {path}")
