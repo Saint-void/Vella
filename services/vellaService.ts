@@ -6,8 +6,10 @@ const BACKEND = "https://exhilaratingly-heaveless-lael.ngrok-free.dev";
 
 export interface ChatReq {
   prompt: string;
-  max_new_tokens: number;
+  max_new_tokens?: number;
 }
+
+const DEFAULT_MAX_NEW_TOKENS = 2048;
 
 /**
  * 1. GET HISTORY: Fetch list of previous conversations
@@ -74,7 +76,7 @@ export const sendMessageToVellaStream = async (
       },
       body: JSON.stringify({ 
         prompt: text, 
-        max_new_tokens: 200 
+        max_new_tokens: DEFAULT_MAX_NEW_TOKENS
       }),
       signal: abortSignal // <--- NEW: Attach signal to the request
     });

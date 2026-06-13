@@ -28,6 +28,8 @@ import {
   Globe,
   X,
   HelpCircle,
+  LogIn,
+  UserPlus,
   Zap
 } from 'lucide-react';
 import FullWaveform from "./components/FullWaveform";
@@ -45,6 +47,7 @@ const App: React.FC = () => {
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true); // Inline Sidebar Dropdown
   const [isHistoryDashboardOpen, setIsHistoryDashboardOpen] = useState(false); // Full Tab View
   const [isAuthOverlayOpen, setIsAuthOverlayOpen] = useState(false);
+  const [authPortalMode, setAuthPortalMode] = useState<'login' | 'signup'>('login');
   const [isDictating, setIsDictating] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false); // NEW: loading animation
   const [sttAbortController, setSttAbortController] = useState<AbortController | null>(null);
@@ -134,7 +137,7 @@ const App: React.FC = () => {
             method: "POST",
             body: formData,
           });
-
+          
         // try {
         //   // ⚠️ Ensure this matches your ngrok URL or uses a config variable
         //   const res = await fetch(" http://localhost:8001/stt", {
@@ -330,12 +333,17 @@ const App: React.FC = () => {
     </button>
   );
 
+  const openAuthPortal = (mode: 'login' | 'signup') => {
+    setAuthPortalMode(mode);
+    setIsAuthOverlayOpen(true);
+  };
+
   return (
     <div className="flex h-screen bg-[#0A0A0A] text-[#ECECEC] font-sans overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">      
-      {isSidebarOpen && (
+      {currentUser && isSidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden backdrop-blur-overlay opacity-100" onClick={() => setIsSidebarOpen(false)} />
       )}
-      {isAuthOverlayOpen && <AuthPortal onAuthenticated={u => { setCurrentUser(u); setIsAuthOverlayOpen(false); }} onClose={() => setIsAuthOverlayOpen(false)} />}
+      {isAuthOverlayOpen && <AuthPortal initialMode={authPortalMode} onAuthenticated={u => { setCurrentUser(u); setIsAuthOverlayOpen(false); }} onClose={() => setIsAuthOverlayOpen(false)} />}
       
       {/* History Dashboard Full View Overlay */}
       {isHistoryDashboardOpen && (
@@ -347,30 +355,30 @@ const App: React.FC = () => {
         />
       )}
 
+      {currentUser && (
       <aside  className={`
             fixed md:relative z-50 h-full bg-black border-r border-white/10
             flex flex-col
             transition-transform duration-300 ease-out will-change-transform
             md:transition-[width] md:duration-300
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-            ${isExpanded ? '' : 'md:w-[40px]'}
+            ${isExpanded ? '' : 'md:w-[52px]'}
             w-[75%] md:w-auto
             `}
           >
         {/* Top Branding */}
-          <div className={`flex items-center py-2 px-1${isExpanded || isSidebarOpen ? 'py-2 px-1 ' : 'py-2 px-1'}`}>
-            <VoidLogo className="w-13  text-white shrink-0" />
-            {(isExpanded || isSidebarOpen)}
+          <div className={`flex h-14 items-center px-2 ${(isExpanded || isSidebarOpen) ? 'justify-start' : 'justify-center'}`}>
+            <VoidLogo className="h-12 w-12 shrink-0 object-contain text-white" />
           </div>
 
-        <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-1 ">
+        <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-2">
           {[
             { id: 'chat', icon: SquarePen, label: 'Chat', action: startNewChat}
           ].map((item) => (
             <button 
               key={item.id}
               onClick={item.action}
-              className={`flex items-center gap-6 rounded-xl transition-all group relative ${(isExpanded || isSidebarOpen) ? 'px-2' : 'justify-center w-12 h-12 mx-auto'} 'bg-zinc-900 text-white' : 'hover:text-zinc-200 hover:bg-white/[0.03]'}`}
+              className={`flex h-12 w-full items-center rounded-xl transition-all group relative hover:text-zinc-200 hover:bg-white/[0.03] ${(isExpanded || isSidebarOpen) ? 'justify-start gap-3 px-3' : 'justify-center'}`}
             >
               <item.icon size={16} className="shrink-0" />
               {(isExpanded || isSidebarOpen) && <span className="text-sm font-medium animate-appear">{item.label}</span>}
@@ -379,41 +387,39 @@ const App: React.FC = () => {
 
           {/* MERGED HISTORY BUTTON WITH DROPDOWN + DASHBOARD Logic */}
           <div className="flex flex-col">
-            <div 
+            <div
               className={`
-                flex items-center group relative cursor-pointer rounded-xl transition-all duration-300
-                ${(isExpanded || isSidebarOpen) ? 'px-2 gap-1' : 'justify-center mx-auto'} 
+                flex h-12 w-full items-center group relative cursor-pointer rounded-xl transition-all duration-300
+                ${(isExpanded || isSidebarOpen) ? 'justify-start' : 'justify-center'} 
                 ${isHistoryDashboardOpen ? 'bg-zinc-900 text-white shadow-lg' : 'hover:bg-white/[0.05] hover:text-white'}
               `}
             >
-              {/* Region 1: The Dropdown Toggle (Left Side) */}
-             {/* Region 1: The Dropdown Toggle (Left Side) */}
+              {/* Region 1: The Action Button (Icon + Text) */}
+              <button 
+                onClick={() => setIsHistoryDashboardOpen(true)}
+                className={`
+                  flex h-full items-center gap-3 rounded-lg transition-all
+                  ${(isExpanded || isSidebarOpen) ? 'flex-1 justify-start px-3 text-left' : 'justify-center'}
+                `}
+              >
+                <History size={16} className="shrink-0 transition-transform group-hover:scale-110" />
+                {(isExpanded || isSidebarOpen) && <span className="text-sm font-semibold tracking-tight animate-appear">History</span>}
+              </button>
+
+              {/* Region 2: The Dropdown Toggle */}
               <button 
                 onClick={(e) => { e.stopPropagation(); setIsHistoryExpanded(!isHistoryExpanded); }}
                 className={`
-                  p-2 rounded-lg transition-colors 
+                  mr-1 p-2 rounded-lg transition-colors 
                   hover:bg-white/10 hover:text-white 
                   ${isHistoryExpanded ? 'text-white' : 'text-zinc-500'}
                   ${!(isExpanded || isSidebarOpen) && 'hidden'}
                 `}
               >
-                {/* ⬇️ ADDED ICON HERE ⬇️ */}
                 <ChevronDown 
                   size={16} 
                   className={`transition-transform duration-200 ${isHistoryExpanded ? 'rotate-0' : '-rotate-90'}`} 
                 />
-              </button>
-              
-              {/* Region 2: The Action Button (Middle/Icon + Text) */}
-              <button 
-                onClick={() => setIsHistoryDashboardOpen(true)}
-                className={`
-                  flex items-center gap-3 flex-1 text-left  py-4 transition-all rounded-lg
-                  ${!(isExpanded || isSidebarOpen) ? 'justify-center' : ''}
-                `}
-              >
-                <History size={16} className="shrink-0 transition-transform group-hover:scale-110" />
-                {(isExpanded || isSidebarOpen) && <span className="text-sm font-semibold tracking-tight animate-appear">History</span>}
               </button>
             </div>
 
@@ -466,7 +472,7 @@ const App: React.FC = () => {
 
           <div className={`flex items-center justify-between ${isExpanded || isSidebarOpen ? 'px-2' : 'justify-center flex-col gap-4'}`}>
             <div 
-              onClick={() => currentUser ? setIsProfileMenuOpen(!isProfileMenuOpen) : setIsAuthOverlayOpen(true)}
+              onClick={() => currentUser ? setIsProfileMenuOpen(!isProfileMenuOpen) : openAuthPortal('login')}
               className="w-10 h-10 rounded-full bg-slate-500/30 border border-white/10 flex items-center justify-center text-xs font-bold text-slate-200 cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0"
             >
               {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'G'}
@@ -474,16 +480,67 @@ const App: React.FC = () => {
           </div>
         </div>
       </aside>
+      )}
 
-      <main className={`flex-1 flex flex-col h-full relative min-w-0 bg-black transition-all duration-500 ${isSidebarOpen ? 'blur-sm scale-[0.98]' : ''}`}>
+      <main className={`flex-1 flex flex-col h-full relative min-w-0 overflow-hidden bg-[#050505] transition-all duration-500 ${currentUser && isSidebarOpen ? 'blur-sm scale-[0.98]' : ''}`}>
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:64px_64px] opacity-25" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.12),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent_22%)]" />
+        {!currentUser && (
+          <div className="absolute left-4 top-4 z-30 hidden items-center gap-2 md:flex">
+            <VoidLogo className="h-13 w-13 shrink-0 object-contain text-white" />
+          </div>
+        )}
+        {!currentUser && (
+          <div className="absolute right-4 top-4 z-30 hidden items-center gap-2 md:flex">
+            <button
+              onClick={() => openAuthPortal('login')}
+              className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-zinc-200 backdrop-blur-md transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+            >
+              <LogIn size={16} />
+              Login
+            </button>
+            <button
+              onClick={() => openAuthPortal('signup')}
+              className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition-all hover:bg-zinc-200"
+            >
+              <UserPlus size={16} />
+              Sign up
+            </button>
+          </div>
+        )}
+
         <header className="flex items-center justify-between p-4 md:hidden">
-          <button onClick={() => setIsSidebarOpen(true)} className="p-3 text-white  rounded-2xl shadow-xl">
-            <Menu size={20} />
-          </button>
-          <div className="w-10" />
+          {currentUser ? (
+            <button onClick={() => setIsSidebarOpen(true)} className="p-3 text-white  rounded-2xl shadow-xl">
+              <Menu size={20} />
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <VoidLogo className="h-9 w-9 shrink-0 object-contain text-white" />
+              <span className="text-base font-bold tracking-tight text-white">Vella</span>
+            </div>
+          )}
+          {!currentUser ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => openAuthPortal('login')}
+                className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-zinc-200"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => openAuthPortal('signup')}
+                className="rounded-full bg-white px-3 py-2 text-xs font-bold text-black"
+              >
+                Sign up
+              </button>
+            </div>
+          ) : (
+            <div className="w-10" />
+          )}
         </header>
 
-        <div className="flex-1 overflow-y-auto flex flex-col items-center">
+        <div className="relative z-10 flex-1 overflow-y-auto flex flex-col items-center">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full w-full max-w-2xl animate-appear text-center ">
               <div className="flex flex-row items-center justify-center mb-6">
@@ -550,7 +607,7 @@ const App: React.FC = () => {
         </div>
 
          {messages.length > 0 && (
-          <div className="absolute bottom-2 left-0 right-0  from-[#111111] via-[#111111] to-transparent flex flex-col items-center">
+          <div className="absolute bottom-2 left-0 right-0 z-20 from-[#111111] via-[#111111] to-transparent flex flex-col items-center">
             <div className="w-full max-w-3xl relative h-14 group">
               <div className={`flex items-center bg-[#111111] rounded-[120px] px-3 h-full border transition-all duration-300 ${
                 isDictating || isTranscribing

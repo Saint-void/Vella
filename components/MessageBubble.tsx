@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Copy, Check, Volume2, StopCircle, Loader2 } from 'lucide-react'; 
 import { Message } from '../types';
 import CodeBlock from './CodeBlock';
@@ -91,7 +92,40 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               <>
                 <div className="prose prose-invert prose-lg max-w-none prose-p:my-2 prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0">
                   <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
+                      table({ children }) {
+                        return (
+                          <div className="my-5 w-full overflow-x-auto rounded-lg border border-white/10">
+                            <table className="w-full min-w-[680px] border-collapse text-left text-sm md:text-base">
+                              {children}
+                            </table>
+                          </div>
+                        );
+                      },
+                      thead({ children }) {
+                        return <thead className="bg-white/10 text-[#F5F5F5]">{children}</thead>;
+                      },
+                      tbody({ children }) {
+                        return <tbody className="divide-y divide-white/10">{children}</tbody>;
+                      },
+                      tr({ children }) {
+                        return <tr className="align-top">{children}</tr>;
+                      },
+                      th({ children }) {
+                        return (
+                          <th className="border-r border-white/10 px-4 py-3 font-semibold last:border-r-0">
+                            {children}
+                          </th>
+                        );
+                      },
+                      td({ children }) {
+                        return (
+                          <td className="border-r border-white/10 px-4 py-3 text-[#E2E2E2] last:border-r-0">
+                            {children}
+                          </td>
+                        );
+                      },
                       // 👑 FIX 1: Explicitly style ordered lists so numbers stay inside bounds with a proper left gutter
                       ol({ children }) {
                         return (

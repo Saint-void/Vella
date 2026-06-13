@@ -1,7 +1,5 @@
 fastapi
 uvicorn
-faster-whisper
-TTS
 transformers
 torch
 torchaudio
