@@ -131,19 +131,19 @@ const App: React.FC = () => {
         const formData = new FormData();
         formData.append("audio", audioBlob, "recording.webm");
 
-        // try {
-        //   // ⚠️ Ensure this matches your ngrok URL or uses a config variable
-        //   const res = await fetch("https://exhilaratingly-heaveless-lael.ngrok-free.dev/stt", {
-        //     method: "POST",
-        //     body: formData,
-        //   });
-
         try {
           // ⚠️ Ensure this matches your ngrok URL or uses a config variable
-          const res = await fetch(" http://localhost:8001/stt", {
+          const res = await fetch("https://exhilaratingly-heaveless-lael.ngrok-free.dev/stt", {
             method: "POST",
             body: formData,
           });
+          
+        // try {
+        //   // ⚠️ Ensure this matches your ngrok URL or uses a config variable
+        //   const res = await fetch(" http://localhost:8001/stt", {
+        //     method: "POST",
+        //     body: formData,
+        //   });
 
           const data = await res.json();
 

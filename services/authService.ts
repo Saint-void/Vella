@@ -1,7 +1,7 @@
 import { User } from '../types';
 
-// const BACKEND = 'https://exhilaratingly-heaveless-lael.ngrok-free.dev';
-const BACKEND = "http://localhost:8001"; // Uncomment for local testing
+const BACKEND = 'https://exhilaratingly-heaveless-lael.ngrok-free.dev';
+// const BACKEND = "http://localhost:8001"; // Uncomment for local testing
 
 type SocialProvider = 'google' | 'apple';
 

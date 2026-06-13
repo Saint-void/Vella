@@ -1,8 +1,8 @@
 // src/services/vellaService.ts
 
 // ⚠️ UPDATE THIS URL EVERY TIME YOU RESTART NGROK
-// const BACKEND = "https://exhilaratingly-heaveless-lael.ngrok-free.dev"; 
-const BACKEND = "http://localhost:8001"; // Uncomment for local testing
+const BACKEND = "https://exhilaratingly-heaveless-lael.ngrok-free.dev"; 
+// const BACKEND = "http://localhost:8001"; // Uncomment for local testing
 
 export interface ChatReq {
   prompt: string;
