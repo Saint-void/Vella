@@ -197,9 +197,11 @@ const AuthPortal: React.FC<AuthPortalProps> = ({ onAuthenticated, onClose, initi
       <div className="w-full md:w-1/2 h-full flex flex-col relative p-8 md:p-5 overflow-y-auto bg-black">
         
         {/* Top Navigation Row */}
-        <div className="flex items-center justify-between mb-10">
-          <VoidLogo className="w-10 text-white" />
+        <a href="/" className="w-15">
+          <div className="flex items-center justify-between mb-10">
+          <VoidLogo className="w-15 text-white" />
         </div>
+        </a>
 
         {/* Center Content Area */}
         <div className="flex-1 flex flex-col items-center justify-center max-w-sm mx-auto w-full">
